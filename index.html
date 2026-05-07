@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CNE Tesouraria</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      margin: 0;
+      padding: 1rem;
+      color: #1f2937;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    button {
+      padding: 0.7rem 1rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: #003366;
+      color: white;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.7rem;
+      margin-top: 0.35rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      border: 1px solid #d0d7e2;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      padding: 0.5rem;
+    }
+    .status {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>CNE Tesouraria</h1>
+    <div class="status" id="syncStatus">A preparar sincronização...</div>
+  </div>
+
+  <div class="card">
+    <h2>Adicionar pessoa</h2>
+    <input id="nome" placeholder="Nome" />
+    <select id="secao">
+      <option>Alcateia</option>
+      <option>Expedição</option>
+      <option>Comunidade</option>
+      <option>Clã</option>
+    </select>
+    <button onclick="addPessoa()">Guardar pessoa</button>
+  </div>
+
+  <div class="card">
+    <h2>Pessoas</h2>
+    <table>
+      <thead>
+        <tr><th>Nome</th><th>Secção</th></tr>
+      </thead>
+      <tbody id="peopleRows"></tbody>
+    </table>
+  </div>
+
+<script>
+const SUPABASE_URL = 'https://ebyovpnqlgjrseudaqet.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_umMHXkrCZk-VM2oKncUjAg_zqx_NDUN';
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const state = {
+  pessoas: []
+};
+
+const channel = new BroadcastChannel('cne-sync');
+
+channel.onmessage = () => {
+  loadPessoas();
+};
+
+async function init() {
+  try {
+    const { data } = await supabaseClient.auth.signInAnonymously();
+    document.getElementById('syncStatus').innerText = 'Ligado ao Supabase e sincronização ativa.';
+    await loadPessoas();
+  } catch (e) {
+    document.getElementById('syncStatus').innerText = 'Modo offline/local.';
+    loadLocal();
+  }
+}
+
+function saveLocal() {
+  localStorage.setItem('cne_v9_local', JSON.stringify(state));
+  channel.postMessage('updated');
+}
+
+function loadLocal() {
+  const raw = localStorage.getItem('cne_v9_local');
+  if (raw) {
+    Object.assign(state, JSON.parse(raw));
+  }
+  renderPeople();
+}
+
+async function loadPessoas() {
+  const { data, error } = await supabaseClient
+    .from('pessoas')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    loadLocal();
+    return;
+  }
+
+  state.pessoas = data || [];
+  saveLocal();
+  renderPeople();
+}
+
+function renderPeople() {
+  document.getElementById('peopleRows').innerHTML = state.pessoas.map(p => `
+    <tr>
+      <td>${p.nome}</td>
+      <td>${p.secao}</td>
+    </tr>
+  `).join('');
+}
+
+async function addPessoa() {
+  const nome = document.getElementById('nome').value.trim();
+  const secao = document.getElementById('secao').value;
+
+  if (!nome) return alert('Nome obrigatório.');
+
+  const pessoa = {
+    id: crypto.randomUUID(),
+    nome,
+    secao,
+    ativo: true
+  };
+
+  state.pessoas.unshift(pessoa);
+  saveLocal();
+  renderPeople();
+
+  const { error } = await supabaseClient
+    .from('pessoas')
+    .insert(pessoa);
+
+  if (error) {
+    console.error(error);
+    alert('Guardado apenas localmente.');
+  } else {
+    await loadPessoas();
+  }
+
+  document.getElementById('nome').value = '';
+}
+
+window.addEventListener('storage', () => {
+  loadLocal();
+});
+
+init();
+</script>
+</body>
+</html>
