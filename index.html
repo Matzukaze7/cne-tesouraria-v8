@@ -6,180 +6,74 @@
   <title>CNE Tesouraria</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f7fb;
-      margin: 0;
-      padding: 1rem;
-      color: #1f2937;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    button {
-      padding: 0.7rem 1rem;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      background: #003366;
-      color: white;
-    }
-    input, select {
-      width: 100%;
-      padding: 0.7rem;
-      margin-top: 0.35rem;
-      margin-bottom: 1rem;
-      border-radius: 8px;
-      border: 1px solid #d0d7e2;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      border-bottom: 1px solid #e5e7eb;
-      text-align: left;
-      padding: 0.5rem;
-    }
-    .status {
-      font-size: 0.9rem;
-      opacity: 0.8;
-    }
+    :root { --azul:#003366; --fundo:#f4f7fb; --verde:#198754; --amarelo:#ffc107; --vermelho:#dc3545; }
+    *{box-sizing:border-box} body{font-family:Arial,sans-serif;background:var(--fundo);margin:0;padding:1rem;color:#1f2937}
+    .wrap{max-width:1180px;margin:auto}.card{background:white;border-radius:16px;padding:1rem;margin-bottom:1rem;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:end}
+    button{padding:.7rem 1rem;border-radius:10px;border:none;cursor:pointer;background:var(--azul);color:white;font-weight:700}button.secondary{background:#6b7280}button.success{background:var(--verde)}button.warn{background:#b7791f}
+    input,select{width:100%;padding:.7rem;margin-top:.35rem;margin-bottom:1rem;border-radius:8px;border:1px solid #d0d7e2}label{font-weight:700}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #e5e7eb;text-align:left;padding:.5rem}th{background:#eef2f7}.status{font-size:.9rem;opacity:.8}.pill{display:inline-block;padding:.25rem .6rem;border-radius:99px;background:#eef2f7;margin:.15rem}.ok{background:#d1e7dd}.warnpill{background:#fff3cd}.bad{background:#f8d7da}.nav button{margin:.15rem}.hidden{display:none}.small{font-size:.85rem;color:#6b7280}
   </style>
 </head>
 <body>
+<div class="wrap">
   <div class="card">
     <h1>CNE Tesouraria</h1>
     <div class="status" id="syncStatus">A preparar sincronização...</div>
+    <div class="nav">
+      <button onclick="show('inicio')">Início</button>
+      <button onclick="show('pessoas')">Pessoas</button>
+      <button onclick="show('atividades')">Atividades</button>
+      <button onclick="show('atividade')">Atividade em curso</button>
+      <button onclick="show('relatorios')">Relatórios</button>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Adicionar pessoa</h2>
-    <input id="nome" placeholder="Nome" />
-    <select id="secao">
-      <option>Alcateia</option>
-      <option>Expedição</option>
-      <option>Comunidade</option>
-      <option>Clã</option>
-    </select>
-    <button onclick="addPessoa()">Guardar pessoa</button>
-  </div>
-
-  <div class="card">
-    <h2>Pessoas</h2>
-    <table>
-      <thead>
-        <tr><th>Nome</th><th>Secção</th></tr>
-      </thead>
-      <tbody id="peopleRows"></tbody>
-    </table>
-  </div>
+  <section id="inicio" class="view"></section>
+  <section id="pessoas" class="view hidden"></section>
+  <section id="atividades" class="view hidden"></section>
+  <section id="atividade" class="view hidden"></section>
+  <section id="relatorios" class="view hidden"></section>
+</div>
 
 <script>
-const SUPABASE_URL = 'https://ebyovpnqlgjrseudaqet.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_umMHXkrCZk-VM2oKncUjAg_zqx_NDUN';
-
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const state = {
-  pessoas: []
-};
-
-const channel = new BroadcastChannel('cne-sync');
-
-channel.onmessage = () => {
-  loadPessoas();
-};
-
-async function init() {
-  try {
-    const { data } = await supabaseClient.auth.signInAnonymously();
-    document.getElementById('syncStatus').innerText = 'Ligado ao Supabase e sincronização ativa.';
-    await loadPessoas();
-  } catch (e) {
-    document.getElementById('syncStatus').innerText = 'Modo offline/local.';
-    loadLocal();
-  }
-}
-
-function saveLocal() {
-  localStorage.setItem('cne_v9_local', JSON.stringify(state));
-  channel.postMessage('updated');
-}
-
-function loadLocal() {
-  const raw = localStorage.getItem('cne_v9_local');
-  if (raw) {
-    Object.assign(state, JSON.parse(raw));
-  }
-  renderPeople();
-}
-
-async function loadPessoas() {
-  const { data, error } = await supabaseClient
-    .from('pessoas')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    loadLocal();
-    return;
-  }
-
-  state.pessoas = data || [];
-  saveLocal();
-  renderPeople();
-}
-
-function renderPeople() {
-  document.getElementById('peopleRows').innerHTML = state.pessoas.map(p => `
-    <tr>
-      <td>${p.nome}</td>
-      <td>${p.secao}</td>
-    </tr>
-  `).join('');
-}
-
-async function addPessoa() {
-  const nome = document.getElementById('nome').value.trim();
-  const secao = document.getElementById('secao').value;
-
-  if (!nome) return alert('Nome obrigatório.');
-
-  const pessoa = {
-    id: crypto.randomUUID(),
-    nome,
-    secao,
-    ativo: true
-  };
-
-  state.pessoas.unshift(pessoa);
-  saveLocal();
-  renderPeople();
-
-  const { error } = await supabaseClient
-    .from('pessoas')
-    .insert(pessoa);
-
-  if (error) {
-    console.error(error);
-    alert('Guardado apenas localmente.');
-  } else {
-    await loadPessoas();
-  }
-
-  document.getElementById('nome').value = '';
-}
-
-window.addEventListener('storage', () => {
-  loadLocal();
-});
-
-init();
+const SUPABASE_URL='https://ebyovpnqlgjrseudaqet.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_umMHXkrCZk-VM2oKncUjAg_zqx_NDUN';
+const supabaseClient=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const channel=new BroadcastChannel('cne-sync');
+const state={pessoas:[],atividades:[],presencas:[],movimentos:[],online:false,currentView:'inicio'};
+const secoes=['Alcateia','Expedição','Comunidade','Clã'];
+const tipos={Alcateia:['Caçadas','Quotas Alcateia','Compras DMF','Mov. Tesouraria','Outros Alcateia'],Expedição:['Aventuras','Quotas Expedição','Compras DMF','Mov. Tesouraria','Reuniões Semanais Exp.','Outros Expedição'],Comunidade:['Empreendimentos','Quotas Pio 34','Compras DMF','Mov. Tesouraria','Outros Comunidade'],Clã:['Caminhadas ','Quotas Clã','Compras DMF','Mov. Tesouraria','Outros Clã']};
+channel.onmessage=()=>loadAll();
+function euro(v){return Number(v||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR'})}
+function saveLocal(){localStorage.setItem('cne_v9_local',JSON.stringify(state));channel.postMessage('updated')}
+function loadLocal(){const raw=localStorage.getItem('cne_v9_local');if(raw)Object.assign(state,JSON.parse(raw));renderAll()}
+async function init(){try{await supabaseClient.auth.signInAnonymously();state.online=true;status('Ligado ao Supabase e sincronização ativa.');await loadAll()}catch(e){state.online=false;status('Modo offline/local.');loadLocal()}}
+function status(t){document.getElementById('syncStatus').innerText=t}
+async function loadTable(name,order='created_at'){const {data,error}=await supabaseClient.from(name).select('*').order(order,{ascending:false});if(error)throw error;state[name]=data||[]}
+async function loadAll(){if(!state.online){loadLocal();return}try{await loadTable('pessoas');await loadTable('atividades');await loadTable('presencas');await loadTable('movimentos');saveLocal();renderAll()}catch(e){console.error(e);status('Erro online. A usar dados locais.');loadLocal()}}
+async function insertRow(table,row){if(!state.online)throw new Error('offline');const {error}=await supabaseClient.from(table).insert(row);if(error)throw error}
+async function upsertRow(table,row){if(!state.online)throw new Error('offline');const {error}=await supabaseClient.from(table).upsert(row);if(error)throw error}
+function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');state.currentView=id;renderAll()}
+function renderAll(){renderInicio();renderPessoas();renderAtividades();renderAtividade();renderRelatorios()}
+function secaoOptions(sel=''){return secoes.map(s=>`<option ${s===sel?'selected':''}>${s}</option>`).join('')}
+function tipoOptions(secao,sel=''){return (tipos[secao]||[]).map(t=>`<option ${t===sel?'selected':''}>${t}</option>`).join('')}
+function atividadesAbertas(){return state.atividades.filter(a=>a.estado==='aberta')}
+function currentActivity(){const id=document.getElementById('atividadeSelect')?.value;return state.atividades.find(a=>a.id===id)||atividadesAbertas()[0]}
+function movimentoTotal(filtro){return state.movimentos.filter(filtro).reduce((s,m)=>s+Number(m.valor||0),0)}
+function renderInicio(){const oficial=movimentoTotal(m=>m.estado_validacao==='validado'&&m.tipo==='recebimento')-movimentoTotal(m=>m.estado_validacao==='validado'&&m.tipo==='pagamento');const previsto=movimentoTotal(m=>['rascunho','por_validar','validado'].includes(m.estado_validacao)&&m.tipo==='recebimento')-movimentoTotal(m=>['rascunho','por_validar','validado'].includes(m.estado_validacao)&&m.tipo==='pagamento');document.getElementById('inicio').innerHTML=`<div class="grid"><div class="card"><h2>Resumo</h2><span class="pill ok">Saldo oficial: ${euro(oficial)}</span><span class="pill warnpill">Por confirmar: ${euro(previsto-oficial)}</span><span class="pill">Saldo previsto: ${euro(previsto)}</span></div><div class="card"><h2>Fluxo recomendado</h2><p>1. Criar pessoas → 2. Criar atividade → 3. Marcar presenças e recebimentos → 4. Relatórios.</p></div></div>`}
+function renderPessoas(){document.getElementById('pessoas').innerHTML=`<div class="grid"><div class="card"><h2>Adicionar pessoa</h2><label>Nome</label><input id="nome" placeholder="Nome completo"><label>Secção</label><select id="secao">${secaoOptions()}</select><label>Bando/Patrulha/Equipa/Tribo</label><input id="subgrupo" placeholder="Opcional"><button onclick="addPessoa()">Guardar pessoa</button></div><div class="card"><h2>Pessoas</h2><table><thead><tr><th>Nome</th><th>Secção</th><th>Subgrupo</th></tr></thead><tbody>${state.pessoas.map(p=>`<tr><td>${p.nome}</td><td>${p.secao}</td><td>${p.subgrupo||''}</td></tr>`).join('')}</tbody></table></div></div>`}
+async function addPessoa(){const nome=document.getElementById('nome').value.trim();const secao=document.getElementById('secao').value;const subgrupo=document.getElementById('subgrupo').value.trim();if(!nome)return alert('Nome obrigatório.');const pessoa={id:crypto.randomUUID(),nome,secao,subgrupo,ativo:true};state.pessoas.unshift(pessoa);saveLocal();renderAll();try{await insertRow('pessoas',pessoa);await loadAll()}catch(e){console.error(e);alert('Guardado localmente. Sincroniza quando houver ligação.')}}
+function renderAtividades(){const secao=document.getElementById('actSecao')?.value||'Expedição';document.getElementById('atividades').innerHTML=`<div class="grid"><div class="card"><h2>Criar atividade</h2><label>Nome</label><input id="actNome" placeholder="Nome"><label>Secção</label><select id="actSecao" onchange="renderAtividades()">${secaoOptions(secao)}</select><label>Tipo SIIC</label><select id="actTipo">${tipoOptions(secao)}</select><label>Data início</label><input id="actInicio" type="date"><label>Data fim</label><input id="actFim" type="date"><label>Local</label><input id="actLocal"><label>Valor padrão</label><input id="actValor" type="number" step="0.01" value="0"><button onclick="addAtividade()">Criar atividade</button></div><div class="card"><h2>Atividades</h2><table><thead><tr><th>Nome</th><th>Secção</th><th>Tipo</th><th>Data</th><th>Valor</th></tr></thead><tbody>${state.atividades.map(a=>`<tr><td>${a.nome}</td><td>${a.secao}</td><td>${a.tipo}</td><td>${a.data_inicio||''} a ${a.data_fim||''}</td><td>${euro(a.valor_padrao)}</td></tr>`).join('')}</tbody></table></div></div>`}
+async function addAtividade(){const nome=document.getElementById('actNome').value.trim();const secao=document.getElementById('actSecao').value;const tipo=document.getElementById('actTipo').value;const data_inicio=document.getElementById('actInicio').value||null;const data_fim=document.getElementById('actFim').value||data_inicio;const local=document.getElementById('actLocal').value.trim();const valor_padrao=Number(document.getElementById('actValor').value||0);if(!nome)return alert('Nome obrigatório.');const atividade={id:crypto.randomUUID(),nome,secao,tipo,data_inicio,data_fim,local,valor_padrao,estado:'aberta'};state.atividades.unshift(atividade);saveLocal();renderAll();try{await insertRow('atividades',atividade);await loadAll()}catch(e){console.error(e);alert('Atividade guardada localmente.')}}
+function renderAtividade(){const abertas=atividadesAbertas();const a=currentActivity();if(!abertas.length){document.getElementById('atividade').innerHTML='<div class="card"><h2>Sem atividade aberta</h2><p>Cria uma atividade primeiro.</p></div>';return}const pessoas=state.pessoas.filter(p=>p.ativo&&p.secao===a.secao);document.getElementById('atividade').innerHTML=`<div class="card"><h2>Atividade em curso</h2><label>Atividade</label><select id="atividadeSelect" onchange="renderAtividade()">${abertas.map(x=>`<option value="${x.id}" ${x.id===a.id?'selected':''}>${x.nome} — ${x.secao}</option>`).join('')}</select><p><strong>${a.nome}</strong> · ${a.tipo} · ${euro(a.valor_padrao)}</p><table><thead><tr><th>Pessoa</th><th>Presença</th><th>Recebido</th><th>Ações</th></tr></thead><tbody>${pessoas.map(p=>personActivityRow(p,a)).join('')}</tbody></table><p><button class="success" onclick="sendDrafts('${a.id}')">Enviar rascunhos para validação</button></p></div>`}
+function personActivityRow(p,a){const pr=state.presencas.find(x=>x.pessoa_id===p.id&&x.atividade_id===a.id);const movs=state.movimentos.filter(m=>m.pessoa_id===p.id&&m.atividade_id===a.id&&m.tipo==='recebimento');const total=movs.reduce((s,m)=>s+Number(m.valor||0),0);return `<tr><td>${p.nome}</td><td><select onchange="setPresenca('${p.id}','${a.id}',this.value)"><option value="pendente" ${!pr||pr.estado==='pendente'?'selected':''}>Pendente</option><option value="presente" ${pr?.estado==='presente'?'selected':''}>Presente</option><option value="ausente" ${pr?.estado==='ausente'?'selected':''}>Ausente</option><option value="justificado" ${pr?.estado==='justificado'?'selected':''}>Justificado</option></select></td><td>${euro(total)} / ${euro(a.valor_padrao)}</td><td><button onclick="addRecebimento('${p.id}','${a.id}',${Number(a.valor_padrao||0)})">Recebeu ${euro(a.valor_padrao)}</button> <button class="secondary" onclick="addRecebimentoManual('${p.id}','${a.id}',${Number(a.valor_padrao||0)})">Outro valor</button></td></tr>`}
+async function setPresenca(pessoa_id,atividade_id,estado){const row={id:`${pessoa_id}_${atividade_id}`,pessoa_id,atividade_id,estado,estado_validacao:'rascunho'};const idx=state.presencas.findIndex(x=>x.id===row.id);if(idx>=0)state.presencas[idx]=row;else state.presencas.unshift(row);saveLocal();renderAll();try{await upsertRow('presencas',row);await loadAll()}catch(e){console.error(e)}}
+async function addRecebimento(pessoa_id,atividade_id,valor){await addMovimento(pessoa_id,atividade_id,valor)}
+async function addRecebimentoManual(pessoa_id,atividade_id,padrao){const raw=prompt('Valor recebido agora',String(padrao));if(raw===null)return;const valor=Number(String(raw).replace(',','.'));if(Number.isNaN(valor)||valor<0)return alert('Valor inválido.');await addMovimento(pessoa_id,atividade_id,valor)}
+async function addMovimento(pessoa_id,atividade_id,valor){const a=state.atividades.find(x=>x.id===atividade_id);const mov={id:crypto.randomUUID(),pessoa_id,atividade_id,tipo:'recebimento',tipo_movimento:a?.tipo||'',origem:'caixa',valor,estado_validacao:'rascunho',estado_siic:valor>=Number(a?.valor_padrao||0)?'Presente ou Entregue/Pago':'Presente ou Entregue/Por Pagar',descricao:'Dinheiro recebido (Recebimento SIIC)'};state.movimentos.unshift(mov);saveLocal();renderAll();try{await insertRow('movimentos',mov);await loadAll()}catch(e){console.error(e);alert('Recebimento guardado localmente.')}}
+async function sendDrafts(atividade_id){const drafts=state.movimentos.filter(m=>m.atividade_id===atividade_id&&m.estado_validacao==='rascunho');for(const m of drafts){m.estado_validacao='por_validar';try{await upsertRow('movimentos',m)}catch(e){console.error(e)}}saveLocal();await loadAll();alert(`${drafts.length} registos enviados para validação.`)}
+function renderRelatorios(){const rows=state.atividades.map(a=>{const movs=state.movimentos.filter(m=>m.atividade_id===a.id&&m.tipo==='recebimento');const total=movs.reduce((s,m)=>s+Number(m.valor||0),0);const presentes=state.presencas.filter(p=>p.atividade_id===a.id&&p.estado==='presente').length;return `<tr><td>${a.nome}</td><td>${a.secao}</td><td>${presentes}</td><td>${euro(total)}</td><td>${movs.filter(m=>m.estado_validacao==='por_validar').length}</td></tr>`}).join('');document.getElementById('relatorios').innerHTML=`<div class="card"><h2>Resumo por atividade</h2><table><thead><tr><th>Atividade</th><th>Secção</th><th>Presentes</th><th>Recebido</th><th>Por validar</th></tr></thead><tbody>${rows}</tbody></table></div>`}
+window.addEventListener('storage',loadLocal);init();
 </script>
 </body>
 </html>
