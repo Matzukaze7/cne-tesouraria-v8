@@ -52,83 +52,70 @@ create table if not exists movimentos (
   estado_validacao text default 'rascunho',
   estado_siic text,
   descricao text,
+  metodo_validacao text,
+  contagem_id text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
+);
+
+alter table movimentos add column if not exists metodo_validacao text;
+alter table movimentos add column if not exists contagem_id text;
+
+create table if not exists contagens (
+  id text primary key,
+  secao text not null,
+  atividade_id text,
+  notas jsonb default '{}'::jsonb,
+  moedas jsonb default '{}'::jsonb,
+  total_contado numeric default 0,
+  total_associado numeric default 0,
+  restante numeric default 0,
+  estado text default 'aberta',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists validacoes (
+  id text primary key,
+  movimento_id text not null,
+  metodo_validacao text not null default 'manual',
+  contagem_id text,
+  checklist jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+create table if not exists auditoria (
+  id text primary key,
+  tipo text not null,
+  entidade text,
+  detalhe text,
+  created_at timestamptz default now()
 );
 
 alter table pessoas enable row level security;
 alter table atividades enable row level security;
 alter table presencas enable row level security;
 alter table movimentos enable row level security;
+alter table contagens enable row level security;
+alter table validacoes enable row level security;
+alter table auditoria enable row level security;
 
-do $$
-begin
-  create policy "anon_read_pessoas" on pessoas for select using (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_insert_pessoas" on pessoas for insert with check (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_update_pessoas" on pessoas for update using (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_read_atividades" on atividades for select using (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_insert_atividades" on atividades for insert with check (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_update_atividades" on atividades for update using (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_read_presencas" on presencas for select using (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_insert_presencas" on presencas for insert with check (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_update_presencas" on presencas for update using (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_read_movimentos" on movimentos for select using (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_insert_movimentos" on movimentos for insert with check (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
-
-do $$
-begin
-  create policy "anon_update_movimentos" on movimentos for update using (auth.role() = 'authenticated');
-exception when duplicate_object then null;
-end $$;
+do $$ begin create policy "anon_read_pessoas" on pessoas for select using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_insert_pessoas" on pessoas for insert with check (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_update_pessoas" on pessoas for update using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_read_atividades" on atividades for select using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_insert_atividades" on atividades for insert with check (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_update_atividades" on atividades for update using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_read_presencas" on presencas for select using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_insert_presencas" on presencas for insert with check (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_update_presencas" on presencas for update using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_read_movimentos" on movimentos for select using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_insert_movimentos" on movimentos for insert with check (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_update_movimentos" on movimentos for update using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_read_contagens" on contagens for select using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_insert_contagens" on contagens for insert with check (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_update_contagens" on contagens for update using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_read_validacoes" on validacoes for select using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_insert_validacoes" on validacoes for insert with check (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_read_auditoria" on auditoria for select using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "anon_insert_auditoria" on auditoria for insert with check (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
