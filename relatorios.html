@@ -1,1 +1,87 @@
-<!DOCTYPE html><html><body><h1>Relatórios CNE</h1><p>Página dedicada de relatórios em construção.</p></body></html>
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatórios CNE</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:Arial;background:#f4f7fb;padding:20px;color:#1f2937}.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:16px}select,input,button{padding:10px;margin:5px;width:100%}button{background:#003366;color:#fff;border:0;border-radius:8px;font-weight:bold}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}th{background:#eef2f7}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Relatórios CNE</h1>
+<div class="grid">
+<div>
+<label>Tipo relatório</label>
+<select id="tipo" onchange="toggle();gerar()">
+<option value="atividade">Atividade</option>
+<option value="pessoa">Pessoa</option>
+<option value="trimestre">Trimestre</option>
+</select>
+</div>
+<div id="atividadeBox">
+<label>Atividade</label>
+<select id="atividade" onchange="gerar()"></select>
+</div>
+<div id="pessoaBox" class="hidden">
+<label>Pessoa</label>
+<select id="pessoa" onchange="loadPessoaAtividades();gerar()"></select>
+</div>
+<div id="pessoaAtividadeBox" class="hidden">
+<label>Atividade da pessoa</label>
+<select id="atividadePessoa" onchange="gerar()"><option value="todas">Todas</option></select>
+</div>
+<div id="trimestreBox" class="hidden">
+<label>Trimestre</label>
+<select id="trimestre" onchange="gerar()">
+<option>1º Trimestre</option>
+<option>2º Trimestre</option>
+<option>3º Trimestre</option>
+<option>4º Trimestre</option>
+</select>
+</div>
+<div>
+<label>Estado movimentos</label>
+<select id="estado" onchange="gerar()">
+<option value="todos">Todos</option>
+<option value="rascunho">Rascunho</option>
+<option value="por_validar">Por validar</option>
+<option value="validado">Validado</option>
+</select>
+</div>
+<div>
+<label>Saldo inicial caixa</label>
+<input id="caixa" type="number" value="0" onchange="gerar()">
+</div>
+<div>
+<label>Saldo inicial banco</label>
+<input id="banco" type="number" value="0" onchange="gerar()">
+</div>
+</div>
+<button onclick="window.print()">Imprimir / PDF</button>
+</div>
+<div class="card" id="output"></div>
+<script>
+const db=supabase.createClient('https://ebyovpnqlgjrseudaqet.supabase.co','sb_publishable_umMHXkrCZk-VM2oKncUjAg_zqx_NDUN');
+const state={pessoas:[],atividades:[],movimentos:[],presencas:[]};
+function euro(v){return Number(v||0).toLocaleString('pt-PT',{style:'currency',currency:'EUR'})}
+function $(i){return document.getElementById(i)}
+function trim(d){if(!d)return'';const m=new Date(d).getMonth()+1;if(m>=10)return'1º Trimestre';if(m<=3)return'2º Trimestre';if(m<=6)return'3º Trimestre';return'4º Trimestre'}
+async function init(){for(const t of ['pessoas','atividades','movimentos','presencas']){const r=await db.from(t).select('*');state[t]=r.data||[]}renderSelectors();gerar()}
+function renderSelectors(){$('atividade').innerHTML=state.atividades.map(a=>`<option value="${a.id}">${a.nome}</option>`).join('');$('pessoa').innerHTML=state.pessoas.map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');loadPessoaAtividades()}
+function toggle(){const t=$('tipo').value;$('atividadeBox').classList.toggle('hidden',t!=='atividade');$('pessoaBox').classList.toggle('hidden',t!=='pessoa');$('pessoaAtividadeBox').classList.toggle('hidden',t!=='pessoa');$('trimestreBox').classList.toggle('hidden',t!=='trimestre')}
+function loadPessoaAtividades(){const p=$('pessoa').value;const ids=[...new Set(state.movimentos.filter(m=>m.pessoa_id===p).map(m=>m.atividade_id))];$('atividadePessoa').innerHTML='<option value="todas">Todas</option>'+ids.map(id=>{const a=state.atividades.find(x=>x.id===id);return `<option value="${id}">${a?a.nome:'-'}</option>`}).join('')}
+function filtroEstado(ms){const e=$('estado').value;return e==='todos'?ms:ms.filter(m=>m.estado_validacao===e)}
+function saldo(ms){const ci=Number($('caixa').value||0),bi=Number($('banco').value||0);const rec=ms.filter(m=>m.tipo==='recebimento').reduce((s,m)=>s+Number(m.valor||0),0);const pag=ms.filter(m=>m.tipo==='pagamento').reduce((s,m)=>s+Number(m.valor||0),0);return `<p><b>Caixa inicial:</b> ${euro(ci)} | <b>Banco inicial:</b> ${euro(bi)}</p><p><b>Saldo final:</b> ${euro(ci+bi+rec-pag)}</p>`}
+function gerar(){const t=$('tipo').value;if(t==='atividade')relAtividade();if(t==='pessoa')relPessoa();if(t==='trimestre')relTrimestre()}
+function relAtividade(){const a=state.atividades.find(x=>x.id===$('atividade').value);if(!a)return;let ms=filtroEstado(state.movimentos.filter(m=>m.atividade_id===a.id));const pessoas=state.pessoas.filter(p=>p.secao===(a.secao_origem||a.secao));$('output').innerHTML=`<h2>Relatório Atividade</h2><p><b>${a.nome}</b></p><p>${a.tipo||''} | ${trim(a.data_inicio)}</p><h3>Pessoas da atividade</h3><table><tr><th>Pessoa</th><th>Presença</th><th>Recebido</th></tr>${pessoas.map(p=>{const pr=state.presencas.find(x=>x.pessoa_id===p.id&&x.atividade_id===a.id);const total=ms.filter(m=>m.pessoa_id===p.id&&m.tipo==='recebimento').reduce((s,m)=>s+Number(m.valor||0),0);return `<tr><td>${p.nome}</td><td>${pr?pr.estado:'pendente'}</td><td>${euro(total)}</td></tr>`}).join('')}</table><h3>Movimentos associados</h3>${movTable(ms)}${subtotais(ms)}${saldo(ms)}`}
+function relPessoa(){const p=state.pessoas.find(x=>x.id===$('pessoa').value);if(!p)return;let ms=state.movimentos.filter(m=>m.pessoa_id===p.id);if($('atividadePessoa').value!=='todas')ms=ms.filter(m=>m.atividade_id===$('atividadePessoa').value);ms=filtroEstado(ms);$('output').innerHTML=`<h2>Relatório Pessoa</h2><p><b>${p.nome}</b> | ${p.secao}</p><h3>Movimentos da pessoa</h3>${movTable(ms)}${subtotais(ms)}${saldo(ms)}`}
+function relTrimestre(){const tr=$('trimestre').value;const acts=state.atividades.filter(a=>trim(a.data_inicio)===tr);let ms=state.movimentos.filter(m=>acts.some(a=>a.id===m.atividade_id));ms=filtroEstado(ms);const tipos=[...new Set(ms.map(m=>m.tipo_movimento||'Sem tipo'))];$('output').innerHTML=`<h2>Relatório ${tr}</h2><h3>Subtotais SIIC</h3><table><tr><th>Tipo</th><th>Total</th></tr>${tipos.map(t=>{const tm=ms.filter(m=>(m.tipo_movimento||'Sem tipo')===t);return `<tr><td>${t}</td><td>${euro(tm.reduce((s,m)=>s+(m.tipo==='recebimento'?1:-1)*Number(m.valor||0),0))}</td></tr>`}).join('')}</table><h3>Todos movimentos trimestre</h3>${movTable(ms)}${saldo(ms)}`}
+function movTable(ms){return `<table><tr><th>Atividade</th><th>Pessoa</th><th>Tipo</th><th>SIIC</th><th>Estado</th><th>Valor</th></tr>${ms.map(m=>{const a=state.atividades.find(x=>x.id===m.atividade_id);const p=state.pessoas.find(x=>x.id===m.pessoa_id);return `<tr><td>${a?a.nome:'-'}</td><td>${p?p.nome:'-'}</td><td>${m.tipo||''}</td><td>${m.tipo_movimento||''}</td><td>${m.estado_validacao||''}</td><td>${euro(m.valor)}</td></tr>`}).join('')}</table>`}
+function subtotais(ms){const rec=ms.filter(m=>m.tipo==='recebimento').reduce((s,m)=>s+Number(m.valor||0),0);const pag=ms.filter(m=>m.tipo==='pagamento').reduce((s,m)=>s+Number(m.valor||0),0);return `<h3>Totais</h3><p><b>Recebimentos:</b> ${euro(rec)}</p><p><b>Pagamentos:</b> ${euro(pag)}</p><p><b>Total líquido:</b> ${euro(rec-pag)}</p>`}
+init()
+</script>
+</body>
+</html>
