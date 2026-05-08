@@ -21,6 +21,10 @@ create table if not exists atividades (
   nome text not null,
   secao text not null,
   tipo text not null,
+  ambito text default 'secao',
+  secao_origem text,
+  conta_financeira text default 'secao',
+  validador_nivel text default 'secao',
   data_inicio date,
   data_fim date,
   local text,
@@ -29,6 +33,11 @@ create table if not exists atividades (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table atividades add column if not exists ambito text default 'secao';
+alter table atividades add column if not exists secao_origem text;
+alter table atividades add column if not exists conta_financeira text default 'secao';
+alter table atividades add column if not exists validador_nivel text default 'secao';
 
 create table if not exists presencas (
   id text primary key,
@@ -54,12 +63,20 @@ create table if not exists movimentos (
   descricao text,
   metodo_validacao text,
   contagem_id text,
+  ambito text default 'secao',
+  secao_origem text,
+  conta_financeira text default 'secao',
+  validador_nivel text default 'secao',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
 alter table movimentos add column if not exists metodo_validacao text;
 alter table movimentos add column if not exists contagem_id text;
+alter table movimentos add column if not exists ambito text default 'secao';
+alter table movimentos add column if not exists secao_origem text;
+alter table movimentos add column if not exists conta_financeira text default 'secao';
+alter table movimentos add column if not exists validador_nivel text default 'secao';
 
 create table if not exists contagens (
   id text primary key,
