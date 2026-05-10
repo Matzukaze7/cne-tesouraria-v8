@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CNE Tesouraria v8</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="card no-print">
+<h1>CNE Tesouraria v8</h1>
+<p class="muted">Dashboard modular leve.</p>
+<p><a href="relatorios.html">Relatórios</a> · <a href="configuracoes.html">Configurações</a></p>
+</div>
+<div id="dashboardRoot"></div>
+<script src="js/utils.js"></script>
+<script src="js/trimestre.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/branding.js"></script>
+<script src="js/financeiro.js"></script>
+<script src="js/realtime.js"></script>
+<script src="js/offline.js"></script>
+<script src="js/dashboard.js"></script>
+<script>CNE.initDashboardPage();</script>
+</body>
+</html>
