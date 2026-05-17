@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teste Operacional CNE Tesouraria</title>
+<meta name="theme-color" content="#1E6042">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="card no-print">
+<h1>Teste Operacional</h1>
+<p class="muted">Página leve para testar módulos críticos antes de substituir o sistema antigo.</p>
+<p><a href="dashboard.html">Dashboard</a> · <a href="relatorios.html">Relatórios</a> · <a href="configuracoes.html">Configurações</a></p>
+<div id="syncStatus" class="status-badge">A iniciar...</div>
+</div>
+
+<div class="card">
+<h2>Diagnóstico rápido</h2>
+<div id="diagnostico"></div>
+</div>
+
+<div class="card">
+<h2>Simulação anti-duplicados</h2>
+<div id="dedupeTeste"></div>
+</div>
+
+<div class="card">
+<h2>Resumo financeiro</h2>
+<div id="resumoFinanceiro"></div>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="js/trimestre.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/branding.js"></script>
+<script src="js/financeiro.js"></script>
+<script src="js/indexeddb.js"></script>
+<script src="js/sync-queue.js"></script>
+<script src="js/offline.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/status-ui.js"></script>
+<script src="js/performance.js"></script>
+<script src="js/anti-duplicados.js"></script>
+<script src="js/conflitos.js"></script>
+<script src="js/trimestre-fecho.js"></script>
+<script src="js/auditoria.js"></script>
+<script>
+async function initTesteOperacional(){
+  await CNE.loadData(['contagens','validacoes','auditoria']);
+  CNE.setStatus(navigator.onLine ? 'online' : 'offline');
+
+  const movimentos = CNE.state.movimentos || [];
+  const sample = movimentos[0];
+  const dup = sample ? CNE.dedupe.assertNoDuplicate(sample, movimentos) : { ok:true };
+
+  CNE.safeInnerHTML(document.getElementById('diagnostico'), `
+    <div class="totals">
+      <div class="box"><b>Pessoas</b><br>${CNE.state.pessoas.length}</div>
+      <div class="box"><b>Atividades</b><br>${CNE.state.atividades.length}</div>
+      <div class="box"><b>Movimentos</b><br>${CNE.state.movimentos.length}</div>
+      <div class="box"><b>Presenças</b><br>${CNE.state.presencas.length}</div>
+    </div>
+  `);
+
+  CNE.safeInnerHTML(document.getElementById('dedupeTeste'), sample ? `
+    <p><b>Movimento exemplo:</b> ${CNE.esc(sample.id)}</p>
+    <p>${dup.ok ? 'Sem duplicado provável no teste direto.' : CNE.esc(dup.message)}</p>
+    <p class="muted">Chave: ${CNE.esc(CNE.dedupe.fingerprintMovimento(sample))}</p>
+  ` : '<p class="muted">Sem movimentos para testar.</p>');
+
+  CNE.safeInnerHTML(document.getElementById('resumoFinanceiro'), `
+    <div class="totals">
+      <div class="box"><b>Recebimentos</b><br>${CNE.euro(CNE.recTotal(movimentos))}</div>
+      <div class="box"><b>Pagamentos</b><br>${CNE.euro(CNE.pagTotal(movimentos))}</div>
+      <div class="box"><b>Total líquido</b><br>${CNE.euro(CNE.totalLiquido(movimentos))}</div>
+    </div>
+  `);
+
+  await CNE.saveOfflineSnapshot();
+}
+
+initTesteOperacional().catch(error => {
+  console.error(error);
+  document.getElementById('diagnostico').innerHTML = '<p class="status-warn">Erro no teste operacional. Ver consola.</p>';
+});
+</script>
+</body>
+</html>
