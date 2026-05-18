@@ -1,10 +1,11 @@
-const CACHE_NAME = 'cne-tesouraria-v8-cache-v1';
+const CACHE_NAME = 'cne-tesouraria-v8-cache-v2';
 
 const CORE_ASSETS = [
   './',
   './dashboard.html',
   './configuracoes.html',
   './relatorios.html',
+  './teste-operacional.html',
   './css/style.css',
   './js/utils.js',
   './js/trimestre.js',
@@ -20,6 +21,22 @@ const CORE_ASSETS = [
   './js/validacoes.js',
   './js/contagens.js',
   './js/auditoria.js',
+  './js/pwa.js',
+  './js/indexeddb.js',
+  './js/sync-queue.js',
+  './js/report-utils.js',
+  './js/relatorio-render.js',
+  './js/relatorio-tabelas.js',
+  './js/relatorio-filtros.js',
+  './js/status-ui.js',
+  './js/performance.js',
+  './js/auto-snapshots.js',
+  './js/anti-duplicados.js',
+  './js/conflitos.js',
+  './js/trimestre-fecho.js',
+  './js/github-pages.js',
+  './js/transferencias.js',
+  './js/soft-delete.js',
   './manifest.webmanifest'
 ];
 
@@ -53,7 +70,7 @@ self.addEventListener('fetch', event => {
 
           return response;
         })
-        .catch(() => caches.match('./dashboard.html'));
+        .catch(() => caches.match('./teste-operacional.html'));
     })
   );
 });
