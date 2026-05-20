@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CNE Tesouraria v8</title>
+<meta name="theme-color" content="#1E6042">
+<link rel="manifest" href="manifest.webmanifest">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="card no-print">
+  <h1>CNE Tesouraria v8</h1>
+  <p class="muted">Entrada modular para testes reais, PWA e GitHub Pages.</p>
+  <div id="syncStatus" class="status-badge">A iniciar...</div>
+</div>
+
+<div class="card">
+  <h2>Ações rápidas</h2>
+  <div id="acoesRapidas" class="quick-actions"></div>
+</div>
+
+<div class="card">
+  <h2>Áreas principais</h2>
+  <div class="grid">
+    <a href="teste-operacional.html"><button>Teste operacional</button></a>
+    <a href="dashboard.html"><button>Dashboard</button></a>
+    <a href="relatorios.html"><button>Relatórios</button></a>
+    <a href="configuracoes.html"><button>Configurações</button></a>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Estado rápido</h2>
+  <div id="estadoRapido" class="totals"></div>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="js/trimestre.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/branding.js"></script>
+<script src="js/financeiro.js"></script>
+<script src="js/indexeddb.js"></script>
+<script src="js/sync-batch.js"></script>
+<script src="js/sync-queue.js"></script>
+<script src="js/offline.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/status-ui.js"></script>
+<script src="js/performance.js"></script>
+<script src="js/workflows-rapidos.js"></script>
+<script src="js/github-pages.js"></script>
+<script>
+async function initAppEntrada(){
+  CNE.setStatus(navigator.onLine ? 'online' : 'offline');
+  CNE.workflows.renderAcoesRapidas('#acoesRapidas');
+  await CNE.loadData();
+  const movimentos = CNE.state.movimentos || [];
+  CNE.safeInnerHTML(document.getElementById('estadoRapido'), `
+    <div class="box"><b>Pessoas</b><br>${CNE.state.pessoas.length}</div>
+    <div class="box"><b>Atividades</b><br>${CNE.state.atividades.length}</div>
+    <div class="box"><b>Movimentos</b><br>${movimentos.length}</div>
+    <div class="box"><b>Total líquido</b><br>${CNE.euro(CNE.totalLiquido(movimentos))}</div>
+  `);
+}
+initAppEntrada().catch(error => {
+  console.error(error);
+  document.getElementById('estadoRapido').innerHTML = '<div class="box status-warn">Erro a iniciar. Ver consola.</div>';
+});
+</script>
+</body>
+</html>
